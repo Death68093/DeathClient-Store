@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" href="data:,">
   <title>DeathClient Cosmetics</title>
+  <link rel="icon" href="data:,">
   <script src="https://unpkg.com/three@0.133.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0/bundles/skinview3d.bundle.js"></script>
   <style>
@@ -17,336 +17,229 @@
       --text-muted: #a1a1aa;
       --accent: #ffffff;
       --accent-text: #000000;
+      --error: #ef4444;
+      --success: #22c55e;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 2rem 1rem; }
 
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem 1rem;
-    }
+    header { width: 100%; max-width: 900px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+    .logo-area h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.05em; text-transform: uppercase; }
+    .logo-area p { color: var(--text-muted); font-size: 0.85rem; }
 
-    header {
-      text-align: center;
-      margin-bottom: 2.5rem;
-    }
+    .user-nav { display: flex; align-items: center; gap: 1rem; }
+    .user-badge { font-size: 0.9rem; color: var(--text); font-weight: 600; }
 
-    header h1 {
-      font-size: 2.5rem;
-      font-weight: 800;
-      letter-spacing: -0.05em;
-      text-transform: uppercase;
-    }
+    .config-panel { width: 100%; max-width: 900px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; }
+    .filters { display: flex; gap: 0.5rem; }
 
-    header p {
-      color: var(--text-muted);
-      margin-top: 0.5rem;
-      font-size: 0.95rem;
-    }
+    .filter-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; text-transform: capitalize; }
+    .filter-btn.active, .filter-btn:hover { background: var(--text); color: var(--accent-text); border-color: var(--text); }
 
-    .config-panel {
-      width: 100%;
-      max-width: 900px;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.25rem;
-      margin-bottom: 2rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      align-items: center;
-      justify-content: space-between;
-    }
+    .grid { width: 100%; max-width: 900px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.5rem; }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.2s, transform 0.2s; }
+    .card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
 
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-      flex: 1;
-      min-width: 250px;
-    }
+    .preview-box { width: 100%; height: 220px; background: #000; border-bottom: 1px solid var(--border); }
+    .preview-box canvas { width: 100%; height: 100%; }
 
-    .input-group label {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
+    .card-body { padding: 1.25rem; display: flex; flex-direction: column; flex-grow: 1; }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .item-title { font-size: 1.1rem; font-weight: 700; }
+    .item-price { font-size: 1rem; font-weight: 600; }
+    .item-desc { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem; flex-grow: 1; line-height: 1.4; }
 
-    .input-group input {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.75rem;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      outline: none;
-    }
+    .action-group { display: flex; gap: 0.5rem; }
+    .btn { flex: 1; padding: 0.75rem; border-radius: 6px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 0.8rem; border: none; transition: opacity 0.2s; }
+    .btn-primary { background: var(--accent); color: var(--accent-text); }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--text); }
 
-    .input-group input:focus {
-      border-color: var(--accent);
-    }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 100; align-items: center; justify-content: center; }
+    .modal-content { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; width: 90%; max-width: 400px; display: flex; flex-direction: column; position: relative; }
+    .close-btn { position: absolute; top: 1rem; right: 1.2rem; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
 
-    .filters {
-      display: flex;
-      gap: 0.5rem;
-    }
+    .auth-tabs { display: flex; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+    .auth-tab { flex: 1; padding: 0.6rem; text-align: center; cursor: pointer; font-weight: 600; color: var(--text-muted); }
+    .auth-tab.active { color: var(--text); border-bottom: 2px solid var(--text); }
 
-    .filter-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 0.75rem 1.25rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 600;
-      text-transform: capitalize;
-    }
+    .form-group { margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-group label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+    .form-group input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 0.75rem; border-radius: 6px; outline: none; }
+    .form-group input:focus { border-color: var(--accent); }
 
-    .filter-btn.active, .filter-btn:hover {
-      background: var(--text);
-      color: var(--accent-text);
-      border-color: var(--text);
-    }
+    .status-msg { font-size: 0.85rem; margin-bottom: 1rem; display: none; }
+    .status-msg.error { color: var(--error); }
+    .status-msg.success { color: var(--success); }
 
-    .grid {
-      width: 100%;
-      max-width: 900px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 1.5rem;
-    }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      transition: border-color 0.2s, transform 0.2s;
-    }
-
-    .card:hover {
-      border-color: var(--border-hover);
-      transform: translateY(-2px);
-    }
-
-    .preview-box {
-      width: 100%;
-      height: 220px;
-      background: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-bottom: 1px solid var(--border);
-      position: relative;
-    }
-
-    .preview-box canvas {
-      width: 100%;
-      height: 100%;
-    }
-
-    .card-body {
-      padding: 1.25rem;
-      display: flex;
-      flex-direction: column;
-      flex-grow: 1;
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 0.5rem;
-    }
-
-    .item-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-    }
-
-    .item-price {
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .item-desc {
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-bottom: 1.25rem;
-      flex-grow: 1;
-      line-height: 1.4;
-    }
-
-    .action-group {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .btn {
-      flex: 1;
-      padding: 0.75rem;
-      border-radius: 6px;
-      font-weight: 700;
-      cursor: pointer;
-      text-transform: uppercase;
-      font-size: 0.8rem;
-      letter-spacing: 0.03em;
-      border: none;
-      transition: opacity 0.2s;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      color: var(--accent-text);
-    }
-
-    .btn-secondary {
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-
-    .btn-secondary:hover {
-      border-color: var(--text);
-    }
-
-    .error-msg {
-      color: #ef4444;
-      font-size: 0.8rem;
-      margin-top: 0.4rem;
-      display: none;
-    }
-
-    .modal {
-      display: none;
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.85);
-      z-index: 100;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal-content {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1.5rem;
-      width: 90%;
-      max-width: 420px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      position: relative;
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 1rem;
-      right: 1.2rem;
-      font-size: 1.5rem;
-      color: var(--text-muted);
-      cursor: pointer;
-    }
-
-    .close-btn:hover {
-      color: var(--text);
-    }
-
-    #skin-container {
-      width: 300px;
-      height: 380px;
-      margin: 1rem 0;
-      background: #000;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-    }
+    #skin-container { width: 100%; height: 320px; background: #000; border: 1px solid var(--border); border-radius: 6px; margin: 1rem 0; }
   </style>
 </head>
 <body>
 
   <header>
-    <h1>DeathClient</h1>
-    <p>Official Cosmetic Store</p>
+    <div class="logo-area">
+      <h1>DeathClient</h1>
+      <p>Official Cosmetic Store</p>
+    </div>
+    <div class="user-nav" id="user-nav">
+      <button class="btn btn-primary" onclick="openAuthModal('login')">Login / Signup</button>
+    </div>
   </header>
 
   <div class="config-panel">
-    <div class="input-group">
-      <label for="username">In-Game Username</label>
-      <input type="text" id="username" placeholder="Enter player name..." value="Steve">
-      <div id="username-error" class="error-msg">Please enter your username first.</div>
-    </div>
+    <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted);">BROWSE COSMETICS</span>
     <div class="filters" id="category-filters"></div>
   </div>
 
   <div class="grid" id="items-grid"></div>
 
-  <div id="tryon-modal" class="modal">
+  <!-- Auth Modal -->
+  <div id="auth-modal" class="modal">
     <div class="modal-content">
-      <span class="close-btn" onclick="closeModal()">&times;</span>
-      <h3 id="modal-title">Try-On Studio</h3>
+      <span class="close-btn" onclick="closeAuthModal()">&times;</span>
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</div>
+        <div class="auth-tab" id="tab-signup" onclick="switchAuthTab('signup')">Sign Up</div>
+      </div>
+      <div id="auth-status" class="status-msg"></div>
+      <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+        <div class="form-group">
+          <label>Minecraft Username</label>
+          <input type="text" id="auth-username" required placeholder="PlayerName">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="auth-password" required placeholder="••••••••">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;" id="auth-submit-btn">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Try-On Modal -->
+  <div id="tryon-modal" class="modal">
+    <div class="modal-content" style="max-width: 420px;">
+      <span class="close-btn" onclick="closeTryOnModal()">&times;</span>
+      <h3 id="tryon-title">Try-On Studio</h3>
       <div id="skin-container"></div>
       <button class="btn btn-primary" style="width: 100%;" id="modal-buy-btn">Purchase Cosmetic</button>
     </div>
   </div>
 
   <script>
-    const API_BASE_URL = 'https://store.deathevents.lol';
+    const STORE_API_URL = 'https://store.deathevents.lol';
+    const AUTH_API_URL = 'https://auth.deathevents.lol';
+    const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
 
     let allItems = {};
     let activeCategory = 'all';
-    let currentViewer = null;
     let cardViewers = [];
+    let currentViewer = null;
+    let authMode = 'login';
+    let currentUser = null;
 
-    const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
-
-    const usernameInput = document.getElementById('username');
-
-    const savedUsername = localStorage.getItem('dc_username');
-    if (savedUsername) {
-      usernameInput.value = savedUsername;
+    // Load persistent login session
+    const savedSession = localStorage.getItem('dc_user_session');
+    if (savedSession) {
+      try { currentUser = JSON.parse(savedSession); } catch(e) {}
     }
 
-    // Live update skin previews when username changes
-    usernameInput.addEventListener('input', (e) => {
-      const newName = e.target.value.trim() || 'Steve';
-      localStorage.setItem('dc_username', newName);
-      
-      const newSkinUrl = `https://minotar.net/skin/${newName}`;
-      
-      cardViewers.forEach(viewer => {
-        viewer.loadSkin(newSkinUrl).catch(() => {
-          viewer.loadSkin(DEFAULT_SKIN);
+    function updateNavUI() {
+      const navContainer = document.getElementById('user-nav');
+      if (currentUser) {
+        navContainer.innerHTML = `
+          <span class="user-badge">Logged in as <strong>${currentUser.username}</strong></span>
+          <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        `;
+      } else {
+        navContainer.innerHTML = `
+          <button class="btn btn-primary" onclick="openAuthModal('login')">Login / Signup</button>
+        `;
+      }
+    }
+
+    function openAuthModal(mode = 'login') {
+      switchAuthTab(mode);
+      document.getElementById('auth-modal').style.display = 'flex';
+    }
+
+    function closeAuthModal() {
+      document.getElementById('auth-modal').style.display = 'none';
+      document.getElementById('auth-status').style.display = 'none';
+    }
+
+    function switchAuthTab(mode) {
+      authMode = mode;
+      document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+      document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
+      document.getElementById('auth-submit-btn').textContent = mode === 'login' ? 'Login' : 'Create Account';
+      document.getElementById('auth-status').style.display = 'none';
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const username = document.getElementById('auth-username').value.trim();
+      const password = document.getElementById('auth-password').value;
+      const statusEl = document.getElementById('auth-status');
+
+      statusEl.style.display = 'none';
+
+      try {
+        const endpoint = authMode === 'login' ? '/api/auth/login' : '/api/auth/signup';
+        const res = await fetch(`${AUTH_API_URL}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
         });
-      });
-    });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          statusEl.textContent = data.error || 'Authentication failed.';
+          statusEl.className = 'status-msg error';
+          statusEl.style.display = 'block';
+          return;
+        }
+
+        if (authMode === 'signup') {
+          statusEl.textContent = 'Account created! Logging you in...';
+          statusEl.className = 'status-msg success';
+          statusEl.style.display = 'block';
+          setTimeout(() => switchAuthTab('login'), 1000);
+          return;
+        }
+
+        // Login success
+        currentUser = { username: data.username, cosmetics: data.cosmetics };
+        localStorage.setItem('dc_user_session', JSON.stringify(currentUser));
+        updateNavUI();
+        closeAuthModal();
+        renderGrid(); // Re-render previews using the logged-in skin
+      } catch (err) {
+        statusEl.textContent = 'Unable to reach auth server.';
+        statusEl.className = 'status-msg error';
+        statusEl.style.display = 'block';
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem('dc_user_session');
+      updateNavUI();
+      renderGrid();
+    }
 
     function loadCosmetic(viewer, item) {
       if (!item || !item.type || !item.fileName) return;
 
-      const assetUrl = `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
+      const assetUrl = `${STORE_API_URL}/api/assets/${item.type}/${item.fileName}`;
 
       if (item.type === 'cape') {
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
 
-        // Clear existing mesh and dispose of old textures
         if (viewer.bandanaMesh) {
           viewer.playerObject.skin.head.remove(viewer.bandanaMesh);
           if (viewer.bandanaMesh.geometry) viewer.bandanaMesh.geometry.dispose();
@@ -357,7 +250,6 @@
           viewer.bandanaMesh = null;
         }
 
-        // Pre-load image natively to prevent WebGL WeakMap key errors
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
@@ -403,19 +295,19 @@
           viewer.bandanaMesh = bandanaMesh;
         };
 
-        img.onerror = (err) => console.error('Bandana image load failure:', assetUrl, err);
+        img.onerror = (err) => console.error('Bandana load failed:', assetUrl, err);
         img.src = assetUrl;
       }
     }
 
     async function fetchItems() {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/items`);
+        const res = await fetch(`${STORE_API_URL}/api/items`);
         allItems = await res.json();
         setupFilters();
         renderGrid();
       } catch (err) {
-        console.error('Failed to load store items:', err);
+        console.error('Failed to load items:', err);
       }
     }
 
@@ -426,9 +318,7 @@
 
     function setupFilters() {
       const categories = new Set(['all']);
-      Object.values(allItems).forEach(item => {
-        if (item.type) categories.add(item.type);
-      });
+      Object.values(allItems).forEach(item => { if (item.type) categories.add(item.type); });
 
       const filterContainer = document.getElementById('category-filters');
       filterContainer.innerHTML = '';
@@ -452,17 +342,13 @@
       const grid = document.getElementById('items-grid');
       grid.innerHTML = '';
 
-      const currentName = usernameInput.value.trim() || 'Steve';
-      const skinUrl = `https://minotar.net/skin/${currentName}`;
+      const targetUsername = currentUser ? currentUser.username : 'Steve';
+      const skinUrl = `https://minotar.net/skin/${targetUsername}`;
 
       Object.entries(allItems).forEach(([id, item]) => {
         if (activeCategory !== 'all' && item.type !== activeCategory) return;
 
-        const priceFormatted = (item.priceInCents / 100).toLocaleString('en-US', {
-          style: 'currency',
-          currency: 'USD'
-        });
-
+        const priceFormatted = (item.priceInCents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
         const canvasId = `card-canvas-${id}`;
 
         const card = document.createElement('div');
@@ -497,7 +383,6 @@
           });
 
           viewer.loadSkin(skinUrl).catch(() => viewer.loadSkin(DEFAULT_SKIN));
-
           viewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
           viewer.autoRotate = true;
           viewer.autoRotateSpeed = 1.2;
@@ -508,25 +393,43 @@
       });
     }
 
-    function openTryOn(item) {
-  // Initialize SkinViewer
-  const viewer = new skinview3d.SkinViewer({
-    canvas: document.getElementById('tryOnCanvas'),
-    width: 300,
-    height: 400,
-    skin: 'https://crafatar.com/skins/853c80ef3c3749fdea9a921264282757'
-  });
+    function openTryOn(itemId) {
+      const item = allItems[itemId];
+      const targetUsername = currentUser ? currentUser.username : 'Steve';
 
-  // Use skinview3d's helper function instead of 'new skinview3d.OrbitControls'
-  const control = skinview3d.createOrbitControls(viewer);
-  control.enableRotate = true;
-  control.enableZoom = true;
-  control.enablePan = false;
+      document.getElementById('tryon-title').textContent = `Try-On: ${item.name}`;
+      document.getElementById('modal-buy-btn').onclick = () => {
+        closeTryOnModal();
+        checkout(itemId);
+      };
+      document.getElementById('tryon-modal').style.display = 'flex';
 
-  loadCosmetic(viewer, item);
-}
+      const container = document.getElementById('skin-container');
+      container.innerHTML = '';
 
-    function closeModal() {
+      const canvas = document.createElement('canvas');
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+      container.appendChild(canvas);
+
+      currentViewer = new skinview3d.SkinViewer({
+        canvas: canvas,
+        width: 300,
+        height: 320
+      });
+
+      currentViewer.loadSkin(`https://minotar.net/skin/${targetUsername}`)
+        .catch(() => currentViewer.loadSkin(DEFAULT_SKIN));
+
+      loadCosmetic(currentViewer, item);
+      currentViewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
+
+      const control = skinview3d.createOrbitControls(currentViewer);
+      control.enableZoom = false;
+      currentViewer.autoRotate = true;
+      currentViewer.autoRotateSpeed = 0.8;
+    }
+
+    function closeTryOnModal() {
       document.getElementById('tryon-modal').style.display = 'none';
       if (currentViewer) {
         currentViewer.dispose();
@@ -535,21 +438,16 @@
     }
 
     async function checkout(itemId) {
-      const errorMsg = document.getElementById('username-error');
-      const username = usernameInput.value.trim();
-
-      if (!username) {
-        errorMsg.style.display = 'block';
-        usernameInput.focus();
+      if (!currentUser) {
+        openAuthModal('login');
         return;
       }
-      errorMsg.style.display = 'none';
 
       try {
-        const response = await fetch(`${API_BASE_URL}/create-checkout-session`, {
+        const response = await fetch(`${STORE_API_URL}/create-checkout-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, itemId })
+          body: JSON.stringify({ username: currentUser.username, itemId })
         });
 
         const data = await response.json();
@@ -563,6 +461,7 @@
       }
     }
 
+    updateNavUI();
     fetchItems();
   </script>
 </body>
