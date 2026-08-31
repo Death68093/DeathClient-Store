@@ -366,8 +366,8 @@
             texture.generateMipmaps = false;
             texture.needsUpdate = true;
 
-            // Dimensions placed around standard Minecraft head box (8 x 8 x 8)
-            const geometry = new THREE.BoxGeometry(8.6, 2.2, 8.6);
+            // Size 9.2 makes it sit clearly outside the 9.0 outer hat layer
+            const geometry = new THREE.BoxGeometry(9.2, 2.4, 9.2);
             const material = new THREE.MeshBasicMaterial({
               map: texture,
               transparent: true,
@@ -376,12 +376,13 @@
             });
 
             const bandanaMesh = new THREE.Mesh(geometry, material);
-            // Positioned over forehead area relative to skinview3d head pivot
-            bandanaMesh.position.set(0, 4.5, 0); 
-            bandanaMesh.renderOrder = 1;
+            
+            // Y=4.0 places the bandana across the forehead relative to the neck pivot
+            bandanaMesh.position.set(0, 4.0, 0); 
+            bandanaMesh.renderOrder = 10; // Ensures rendering over skin layers
             bandanaMesh.matrixAutoUpdate = true;
 
-            // Attach directly to the player skin's head group
+            // Attach to the head group
             const headGroup = viewer.playerObject.skin.head;
             headGroup.add(bandanaMesh);
             
