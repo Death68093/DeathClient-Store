@@ -313,7 +313,7 @@
     let currentViewer = null;
     let cardViewers = [];
 
-const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
+    const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
 
     const usernameInput = document.getElementById('username');
 
@@ -322,8 +322,18 @@ const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
       usernameInput.value = savedUsername;
     }
 
+    // Live update the skins on all preview cards when the user types
     usernameInput.addEventListener('input', (e) => {
-      localStorage.setItem('dc_username', e.target.value.trim());
+      const newName = e.target.value.trim() || 'Steve';
+      localStorage.setItem('dc_username', newName);
+      
+      const newSkinUrl = `https://minotar.net/skin/${newName}`;
+      
+      cardViewers.forEach(viewer => {
+        viewer.loadSkin(newSkinUrl).catch(() => {
+          viewer.loadSkin(DEFAULT_SKIN);
+        });
+      });
     });
 
     // Helper function to render Capes or 3D Bandanas
@@ -333,7 +343,7 @@ const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
       const assetUrl = `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
 
       if (item.type === 'cape') {
-        viewer.loadCape(assetUrl);
+        viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
         // Remove old bandana mesh if reloading
         if (viewer.bandanaMesh) {
@@ -342,25 +352,34 @@ const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
         }
 
         const textureLoader = new THREE.TextureLoader();
-        textureLoader.setCrossOrigin('anonymous');
-        textureLoader.load(assetUrl, (texture) => {
-          texture.magFilter = THREE.NearestFilter;
-          texture.minFilter = THREE.NearestFilter;
+        textureLoader.setCrossOrigin('anonymous'); // Prevents WebGL freezes
+        
+        textureLoader.load(
+          assetUrl, 
+          (texture) => {
+            texture.magFilter = THREE.NearestFilter;
+            texture.minFilter = THREE.NearestFilter;
 
-          // Dimensions slightly larger than standard Minecraft head (8 x 8 x 8)
-          const geometry = new THREE.BoxGeometry(8.6, 2.2, 8.6);
-          const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            side: THREE.DoubleSide
-          });
+            // Dimensions slightly larger than standard Minecraft head (8 x 8 x 8)
+            const geometry = new THREE.BoxGeometry(8.6, 2.2, 8.6);
+            const material = new THREE.MeshBasicMaterial({
+              map: texture,
+              transparent: true,
+              side: THREE.DoubleSide
+            });
 
-          const bandanaMesh = new THREE.Mesh(geometry, material);
-          bandanaMesh.position.set(0, 1.5, 0); // Align with forehead
+            const bandanaMesh = new THREE.Mesh(geometry, material);
+            // Position exactly around the forehead area of the head mesh
+            bandanaMesh.position.set(0, 1.5, 0); 
 
-          viewer.playerObject.skin.head.add(bandanaMesh);
-          viewer.bandanaMesh = bandanaMesh;
-        });
+            viewer.playerObject.skin.head.add(bandanaMesh);
+            viewer.bandanaMesh = bandanaMesh;
+          },
+          undefined,
+          (err) => {
+            console.error('Failed to load bandana texture:', err);
+          }
+        );
       }
     }
 
@@ -408,6 +427,9 @@ const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
       const grid = document.getElementById('items-grid');
       grid.innerHTML = '';
 
+      const currentName = usernameInput.value.trim() || 'Steve';
+      const skinUrl = `https://minotar.net/skin/${currentName}`;
+
       Object.entries(allItems).forEach(([id, item]) => {
         if (activeCategory !== 'all' && item.type !== activeCategory) return;
 
@@ -446,8 +468,11 @@ const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
             canvas: canvas,
             width: 260,
             height: 220,
-            skin: DEFAULT_SKIN
+            skin: skinUrl
           });
+
+          // Fallback to Steve if the username doesn't have a skin
+          viewer.loadSkin(skinUrl).catch(() => viewer.loadSkin(DEFAULT_SKIN));
 
           // Rotate model to show front face for bandanas
           viewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
