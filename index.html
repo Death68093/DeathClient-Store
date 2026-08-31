@@ -339,11 +339,10 @@
     function loadCosmetic(viewer, item) {
       if (!item || !item.type || !item.fileName) return;
 
-      // Force the URL to use the specific file mentioned if it's the bandana
+      // Use a direct relative path for the local file
       const assetUrl = item.type === 'bandana' 
-        ? `${API_BASE_URL}/api/assets/bandana/nike_bandana_3.png`
+        ? "nike_bandana.png"
         : `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
-
       if (item.type === 'cape') {
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
@@ -546,7 +545,7 @@
 
       currentViewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
 
-      let control = skinview3d.createOrbitControls(currentViewer);
+      let control = new skinview3d.OrbitControls(currentViewer);
       control.enableZoom = false;
       currentViewer.autoRotate = true;
       currentViewer.autoRotateSpeed = 0.8;
