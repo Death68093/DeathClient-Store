@@ -339,13 +339,15 @@
     function loadCosmetic(viewer, item) {
       if (!item || !item.type || !item.fileName) return;
 
-      const assetUrl = `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
+      // Force the URL to use the specific file mentioned if it's the bandana
+      const assetUrl = item.type === 'bandana' 
+        ? `${API_BASE_URL}/api/assets/bandana/nike_bandana_3.png`
+        : `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
 
       if (item.type === 'cape') {
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
         
-        // Clean up previous cosmetics to prevent memory leaks
         if (viewer.bandanaMesh) {
           if (viewer.bandanaMesh.parent) {
             viewer.bandanaMesh.parent.remove(viewer.bandanaMesh);
@@ -358,7 +360,6 @@
         const textureLoader = new THREE.TextureLoader();
         textureLoader.setCrossOrigin('anonymous');
         
-        // Load the specific file: nike_bandana_2.png
         textureLoader.load(
           assetUrl, 
           (texture) => {
@@ -366,12 +367,33 @@
             texture.minFilter = THREE.NearestFilter;
             texture.generateMipmaps = false;
 
-            // Define the 3D dimensions (slightly larger than the 9.0 hat layer)
             const geometry = new THREE.BoxGeometry(9.2, 2.5, 9.2);
+            
+            // Custom UV Mapping to unwrap nike_bandana_3.png correctly
+            // BoxGeometry faces: [Right, Left, Top, Bottom, Front, Back]
+            const uvAttribute = geometry.attributes.uv;
+            
+            // Define fractional coordinates (x, y, width, height) based on your texture grid
+            // Adjust these specific fractions (0.0 to 1.0) to frame the exact parts of the PNG
+            const faceUvs = [
+              [0.75, 0.5, 1.0, 1.0],   // Right
+              [0.0, 0.5, 0.25, 1.0],   // Left
+              [0.25, 1.0, 0.5, 1.0],   // Top (dummy or mapped)
+              [0.5, 1.0, 0.75, 1.0],   // Bottom (dummy or mapped)
+              [0.25, 0.5, 0.5, 1.0],   // Front (Nike logo)
+              [0.5, 0.5, 0.75, 1.0]    // Back
+            ];
 
-            // Create a custom material array to handle complex texture mapping
-            // For a fully custom atlas like nike_bandana_2.png, you map specific 
-            // regions to the [Right, Left, Top, Bottom, Front, Back] faces.
+            for (let i = 0; i < 6; i++) {
+              const uvs = faceUvs[i];
+              // Each face has 4 vertices (2 triangles), requiring 8 UV coordinates
+              uvAttribute.setXY(i * 4 + 0, uvs[0], uvs[1] + uvs[3]); // Top Left
+              uvAttribute.setXY(i * 4 + 1, uvs[0] + uvs[2], uvs[1] + uvs[3]); // Top Right
+              uvAttribute.setXY(i * 4 + 2, uvs[0], uvs[1]); // Bottom Left
+              uvAttribute.setXY(i * 4 + 3, uvs[0] + uvs[2], uvs[1]); // Bottom Right
+            }
+            uvAttribute.needsUpdate = true;
+
             const material = new THREE.MeshBasicMaterial({
               map: texture,
               transparent: true,
@@ -379,21 +401,14 @@
               side: THREE.DoubleSide
             });
 
-            // Apply the same material to all 6 faces of the BoxGeometry array
-            const materials = [material, material, material, material, material, material];
-
-            const bandanaMesh = new THREE.Mesh(geometry, materials);
-            
-            // Position at the forehead level relative to the neck pivot (Y=0)
+            const bandanaMesh = new THREE.Mesh(geometry, material);
             bandanaMesh.position.set(0, 4.5, 0); 
             bandanaMesh.matrixAutoUpdate = true;
             bandanaMesh.renderOrder = 10;
 
-            // Prototype fallback to prevent Three.js version conflicts
             bandanaMesh.onBeforeRender = function() {};
             bandanaMesh.onAfterRender = function() {};
 
-            // Attach to the player's head group
             viewer.playerObject.skin.head.add(bandanaMesh);
             viewer.bandanaMesh = bandanaMesh;
           },
