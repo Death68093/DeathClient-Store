@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DeathClient Cosmetics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0/bundles/skinview3d.bundle.js"></script>
+  <style>
+    :root {
+      --bg: #09090b;
+      --card-bg: #121215;
+      --border: #27272a;
+      --border-hover: #52525b;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --accent: #ffffff;
+      --accent-text: #000000;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      text-transform: uppercase;
+    }
+
+    header p {
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    .config-panel {
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.25rem;
+      margin-bottom: 2rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .input-group label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .input-group input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .input-group input:focus {
+      border-color: var(--accent);
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: var(--text);
+      color: var(--accent-text);
+      border-color: var(--text);
+    }
+
+    .grid {
+      width: 100%;
+      max-width: 900px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+    }
+
+    .preview-box {
+      width: 100%;
+      height: 220px;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+    }
+
+    .preview-box canvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .card-body {
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      flex-grow: 1;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+
+    .item-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .item-price {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .item-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+      flex-grow: 1;
+      line-height: 1.4;
+    }
+
+    .action-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.03em;
+      border: none;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--text);
+    }
+
+    .error-msg {
+      color: #ef4444;
+      font-size: 0.8rem;
+      margin-top: 0.4rem;
+      display: none;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1.2rem;
+      font-size: 1.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      color: var(--text);
+    }
+
+    #skin-container {
+      width: 300px;
+      height: 380px;
+      margin: 1rem 0;
+      background: #000;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>DeathClient</h1>
+    <p>Official Cosmetic Store</p>
+  </header>
+
+  <div class="config-panel">
+    <div class="input-group">
+      <label for="username">In-Game Username</label>
+      <input type="text" id="username" placeholder="Enter player name..." value="Steve">
+      <div id="username-error" class="error-msg">Please enter your username first.</div>
+    </div>
+    <div class="filters" id="category-filters"></div>
+  </div>
+
+  <div class="grid" id="items-grid"></div>
+
+  <div id="tryon-modal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal()">&times;</span>
+      <h3 id="modal-title">Try-On Studio</h3>
+      <div id="skin-container"></div>
+      <button class="btn btn-primary" style="width: 100%;" id="modal-buy-btn">Purchase Cosmetic</button>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = 'https://store-api.yourdomain.com';
+
+    let allItems = {};
+    let activeCategory = 'all';
+    let currentViewer = null;
+    let cardViewers = [];
+
+    const DEFAULT_SKIN = "https://textures.minecraft.net/texture/1a424b1b44d1d8114a0e9f1615620a60f44985db7087e91d5fc102f3020d0";
+
+    const usernameInput = document.getElementById('username');
+
+    const savedUsername = localStorage.getItem('dc_username');
+    if (savedUsername) {
+      usernameInput.value = savedUsername;
+    }
+
+    usernameInput.addEventListener('input', (e) => {
+      localStorage.setItem('dc_username', e.target.value.trim());
+    });
+
+    // Helper function to render Capes or 3D Bandanas
+    function loadCosmetic(viewer, item) {
+      if (!item || !item.type || !item.fileName) return;
+
+      const assetUrl = `${API_BASE_URL}/api/asset/${item.type}/${item.fileName}`;
+
+      if (item.type === 'cape') {
+        viewer.loadCape(assetUrl);
+      } else if (item.type === 'bandana') {
+        // Remove old bandana mesh if reloading
+        if (viewer.bandanaMesh) {
+          viewer.playerObject.skin.head.remove(viewer.bandanaMesh);
+          viewer.bandanaMesh = null;
+        }
+
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(assetUrl, (texture) => {
+          texture.magFilter = THREE.NearestFilter;
+          texture.minFilter = THREE.NearestFilter;
+
+          // Dimensions slightly larger than standard Minecraft head (8 x 8 x 8)
+          const geometry = new THREE.BoxGeometry(8.6, 2.2, 8.6);
+          const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            side: THREE.DoubleSide
+          });
+
+          const bandanaMesh = new THREE.Mesh(geometry, material);
+          bandanaMesh.position.set(0, 1.5, 0); // Align with forehead
+
+          viewer.playerObject.skin.head.add(bandanaMesh);
+          viewer.bandanaMesh = bandanaMesh;
+        });
+      }
+    }
+
+    async function fetchItems() {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/items`);
+        allItems = await res.json();
+        setupFilters();
+        renderGrid();
+      } catch (err) {
+        console.error('Failed to load store items:', err);
+      }
+    }
+
+    function clearCardViewers() {
+      cardViewers.forEach(v => v.dispose());
+      cardViewers = [];
+    }
+
+    function setupFilters() {
+      const categories = new Set(['all']);
+      Object.values(allItems).forEach(item => {
+        if (item.type) categories.add(item.type);
+      });
+
+      const filterContainer = document.getElementById('category-filters');
+      filterContainer.innerHTML = '';
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = `filter-btn ${cat === activeCategory ? 'active' : ''}`;
+        btn.textContent = cat;
+        btn.onclick = () => {
+          document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeCategory = cat;
+          renderGrid();
+        };
+        filterContainer.appendChild(btn);
+      });
+    }
+
+    function renderGrid() {
+      clearCardViewers();
+      const grid = document.getElementById('items-grid');
+      grid.innerHTML = '';
+
+      Object.entries(allItems).forEach(([id, item]) => {
+        if (activeCategory !== 'all' && item.type !== activeCategory) return;
+
+        const priceFormatted = (item.priceInCents / 100).toLocaleString('en-US', {
+          style: 'currency',
+          currency: 'USD'
+        });
+
+        const canvasId = `card-canvas-${id}`;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="preview-box">
+            <canvas id="${canvasId}"></canvas>
+          </div>
+          <div class="card-body">
+            <div class="card-header">
+              <span class="item-title">${item.name}</span>
+              <span class="item-price">${priceFormatted}</span>
+            </div>
+            <p class="item-desc">${item.description || ''}</p>
+            <div class="action-group">
+              <button class="btn btn-secondary" onclick="openTryOn('${id}')">Try On</button>
+              <button class="btn btn-primary" onclick="checkout('${id}')">Buy</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+
+        const canvas = document.getElementById(canvasId);
+        if (canvas) {
+          canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+          const viewer = new skinview3d.SkinViewer({
+            canvas: canvas,
+            width: 260,
+            height: 220,
+            skin: DEFAULT_SKIN
+          });
+
+          // Rotate model to show front face for bandanas
+          viewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
+          viewer.autoRotate = true;
+          viewer.autoRotateSpeed = 1.2;
+
+          loadCosmetic(viewer, item);
+          cardViewers.push(viewer);
+        }
+      });
+    }
+
+    function openTryOn(itemId) {
+      const username = usernameInput.value.trim() || 'Steve';
+      const item = allItems[itemId];
+
+      document.getElementById('modal-title').textContent = `Try-On: ${item.name}`;
+      document.getElementById('modal-buy-btn').onclick = () => checkout(itemId);
+      document.getElementById('tryon-modal').style.display = 'flex';
+
+      const container = document.getElementById('skin-container');
+      container.innerHTML = '';
+
+      const canvas = document.createElement('canvas');
+      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+      container.appendChild(canvas);
+
+      currentViewer = new skinview3d.SkinViewer({
+        canvas: canvas,
+        width: 300,
+        height: 380
+      });
+
+      currentViewer.loadSkin(`https://minotar.net/skin/${username}`)
+        .catch(() => currentViewer.loadSkin(DEFAULT_SKIN));
+
+      loadCosmetic(currentViewer, item);
+
+      currentViewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
+
+      let control = skinview3d.createOrbitControls(currentViewer);
+      control.enableZoom = false;
+      currentViewer.autoRotate = true;
+      currentViewer.autoRotateSpeed = 0.8;
+    }
+
+    function closeModal() {
+      document.getElementById('tryon-modal').style.display = 'none';
+      if (currentViewer) {
+        currentViewer.dispose();
+        currentViewer = null;
+      }
+    }
+
+    async function checkout(itemId) {
+      const errorMsg = document.getElementById('username-error');
+      const username = usernameInput.value.trim();
+
+      if (!username) {
+        errorMsg.style.display = 'block';
+        usernameInput.focus();
+        return;
+      }
+      errorMsg.style.display = 'none';
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/create-checkout-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, itemId })
+        });
+
+        const data = await response.json();
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          alert('Error initializing checkout. Please try again.');
+        }
+      } catch (err) {
+        console.error('Checkout error:', err);
+      }
+    }
+
+    fetchItems();
+  </script>
+</body>
+</html>
