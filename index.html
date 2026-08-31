@@ -346,10 +346,9 @@
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
 
+        // Clear existing mesh and dispose of old textures
         if (viewer.bandanaMesh) {
-          if (viewer.bandanaMesh.parent) {
-            viewer.bandanaMesh.parent.remove(viewer.bandanaMesh);
-          }
+          viewer.playerObject.skin.head.remove(viewer.bandanaMesh);
           if (viewer.bandanaMesh.geometry) viewer.bandanaMesh.geometry.dispose();
           if (viewer.bandanaMesh.material) {
             if (viewer.bandanaMesh.material.map) viewer.bandanaMesh.material.map.dispose();
@@ -358,62 +357,54 @@
           viewer.bandanaMesh = null;
         }
 
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.setCrossOrigin('anonymous');
+        // Pre-load image natively to prevent WebGL WeakMap key errors
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const texture = new THREE.Texture(img);
+          texture.magFilter = THREE.NearestFilter;
+          texture.minFilter = THREE.NearestFilter;
+          texture.generateMipmaps = false;
+          texture.needsUpdate = true;
 
-        textureLoader.load(
-          assetUrl,
-          (texture) => {
-            // Confirm texture is a valid object before assigning
-            if (!texture || typeof texture !== 'object') return;
+          const geometry = new THREE.BoxGeometry(9.2, 2.5, 9.2);
+          const uvAttribute = geometry.attributes.uv;
 
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.NearestFilter;
-            texture.generateMipmaps = false;
-            texture.needsUpdate = true;
+          const faceUvs = [
+            [0.75, 0.5, 0.25, 0.5], // Right
+            [0.0,  0.5, 0.25, 0.5], // Left
+            [0.25, 0.5, 0.25, 0.5], // Top
+            [0.5,  0.5, 0.25, 0.5], // Bottom
+            [0.25, 0.0, 0.25, 0.5], // Front
+            [0.5,  0.0, 0.25, 0.5]  // Back
+          ];
 
-            const geometry = new THREE.BoxGeometry(9.2, 2.5, 9.2);
-            const uvAttribute = geometry.attributes.uv;
+          for (let i = 0; i < 6; i++) {
+            const [u, v, w, h] = faceUvs[i];
+            uvAttribute.setXY(i * 4 + 0, u, v + h);
+            uvAttribute.setXY(i * 4 + 1, u + w, v + h);
+            uvAttribute.setXY(i * 4 + 2, u, v);
+            uvAttribute.setXY(i * 4 + 3, u + w, v);
+          }
+          uvAttribute.needsUpdate = true;
 
-            const faceUvs = [
-              [0.75, 0.5, 0.25, 0.5], // Right
-              [0.0,  0.5, 0.25, 0.5], // Left
-              [0.25, 0.5, 0.25, 0.5], // Top
-              [0.5,  0.5, 0.25, 0.5], // Bottom
-              [0.25, 0.0, 0.25, 0.5], // Front
-              [0.5,  0.0, 0.25, 0.5]  // Back
-            ];
+          const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            alphaTest: 0.1,
+            side: THREE.DoubleSide
+          });
 
-            for (let i = 0; i < 6; i++) {
-              const [u, v, w, h] = faceUvs[i];
-              uvAttribute.setXY(i * 4 + 0, u, v + h);
-              uvAttribute.setXY(i * 4 + 1, u + w, v + h);
-              uvAttribute.setXY(i * 4 + 2, u, v);
-              uvAttribute.setXY(i * 4 + 3, u + w, v);
-            }
-            uvAttribute.needsUpdate = true;
+          const bandanaMesh = new THREE.Mesh(geometry, material);
+          bandanaMesh.position.set(0, 4.5, 0);
+          bandanaMesh.renderOrder = 10;
 
-            const material = new THREE.MeshBasicMaterial({
-              map: texture,
-              transparent: true,
-              alphaTest: 0.1,
-              side: THREE.DoubleSide
-            });
+          viewer.playerObject.skin.head.add(bandanaMesh);
+          viewer.bandanaMesh = bandanaMesh;
+        };
 
-            const bandanaMesh = new THREE.Mesh(geometry, material);
-            bandanaMesh.position.set(0, 4.5, 0);
-            bandanaMesh.renderOrder = 10;
-            bandanaMesh.matrixAutoUpdate = true;
-
-            bandanaMesh.onBeforeRender = function() {};
-            bandanaMesh.onAfterRender = function() {};
-
-            viewer.playerObject.skin.head.add(bandanaMesh);
-            viewer.bandanaMesh = bandanaMesh;
-          },
-          undefined,
-          (err) => console.error('Bandana texture load failure:', err)
-        );
+        img.onerror = (err) => console.error('Bandana image load failure:', assetUrl, err);
+        img.src = assetUrl;
       }
     }
 
@@ -517,39 +508,23 @@
       });
     }
 
-    function openTryOn(itemId) {
-      const username = usernameInput.value.trim() || 'Steve';
-      const item = allItems[itemId];
+    function openTryOn(item) {
+  // Initialize SkinViewer
+  const viewer = new skinview3d.SkinViewer({
+    canvas: document.getElementById('tryOnCanvas'),
+    width: 300,
+    height: 400,
+    skin: 'https://crafatar.com/skins/853c80ef3c3749fdea9a921264282757'
+  });
 
-      document.getElementById('modal-title').textContent = `Try-On: ${item.name}`;
-      document.getElementById('modal-buy-btn').onclick = () => checkout(itemId);
-      document.getElementById('tryon-modal').style.display = 'flex';
+  // Use skinview3d's helper function instead of 'new skinview3d.OrbitControls'
+  const control = skinview3d.createOrbitControls(viewer);
+  control.enableRotate = true;
+  control.enableZoom = true;
+  control.enablePan = false;
 
-      const container = document.getElementById('skin-container');
-      container.innerHTML = '';
-
-      const canvas = document.createElement('canvas');
-      canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-      container.appendChild(canvas);
-
-      currentViewer = new skinview3d.SkinViewer({
-        canvas: canvas,
-        width: 300,
-        height: 380
-      });
-
-      currentViewer.loadSkin(`https://minotar.net/skin/${username}`)
-        .catch(() => currentViewer.loadSkin(DEFAULT_SKIN));
-
-      loadCosmetic(currentViewer, item);
-
-      currentViewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
-
-      let control = new skinview3d.OrbitControls(currentViewer);
-      control.enableZoom = false;
-      currentViewer.autoRotate = true;
-      currentViewer.autoRotateSpeed = 0.8;
-    }
+  loadCosmetic(viewer, item);
+}
 
     function closeModal() {
       document.getElementById('tryon-modal').style.display = 'none';
