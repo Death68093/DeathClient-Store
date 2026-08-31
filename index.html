@@ -261,16 +261,18 @@
           texture.magFilter = THREE.NearestFilter;
           texture.minFilter = THREE.NearestFilter;
 
-          const geometry = new THREE.BoxGeometry(8.5, 2.5, 8.5);
+          // Head size is 8x8x8. 8.5x2.2x8.5 fits snug around the forehead
+          const geometry = new THREE.BoxGeometry(8.5, 2.2, 8.5);
           const uvAttribute = geometry.attributes.uv;
 
+          // Map UVs so the logo/graphic renders centered on the front face
           const faceUvs = [
-            [0.75, 0.5, 0.25, 0.5], // Right
-            [0.0,  0.5, 0.25, 0.5], // Left
-            [0.25, 0.5, 0.25, 0.5], // Top
-            [0.5,  0.5, 0.25, 0.5], // Bottom
-            [0.25, 0.0, 0.25, 0.5], // Front
-            [0.5,  0.0, 0.25, 0.5]  // Back
+            [0.75, 0.0, 0.25, 1.0], // Right
+            [0.0,  0.0, 0.25, 1.0], // Left
+            [0.25, 0.0, 0.25, 0.2], // Top
+            [0.25, 0.8, 0.25, 0.2], // Bottom
+            [0.25, 0.0, 0.25, 1.0], // Front (Nike Swoosh)
+            [0.5,  0.0, 0.25, 1.0]  // Back
           ];
 
           for (let i = 0; i < 6; i++) {
@@ -290,7 +292,9 @@
           });
 
           const bandanaMesh = new THREE.Mesh(geometry, material);
-          bandanaMesh.position.set(0, 4.5, 0);
+          
+          // Y = 0.8 places the headband across the upper forehead just above the eyes
+          bandanaMesh.position.set(0, 0.8, 0);
           bandanaMesh.renderOrder = 10;
 
           if (viewer.playerObject && viewer.playerObject.skin && viewer.playerObject.skin.head) {
