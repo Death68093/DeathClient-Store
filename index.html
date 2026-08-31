@@ -322,7 +322,7 @@
       usernameInput.value = savedUsername;
     }
 
-    // Live update the skins on all preview cards when the user types
+    // Live update skin previews when username changes
     usernameInput.addEventListener('input', (e) => {
       const newName = e.target.value.trim() || 'Steve';
       localStorage.setItem('dc_username', newName);
@@ -345,40 +345,51 @@
       if (item.type === 'cape') {
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
-        // Remove old bandana mesh if reloading
+        
+        // Clean up previous bandana mesh to prevent rendering corruption or memory leaks
         if (viewer.bandanaMesh) {
-          viewer.playerObject.skin.head.remove(viewer.bandanaMesh);
+          if (viewer.bandanaMesh.parent) {
+            viewer.bandanaMesh.parent.remove(viewer.bandanaMesh);
+          }
+          if (viewer.bandanaMesh.geometry) viewer.bandanaMesh.geometry.dispose();
+          if (viewer.bandanaMesh.material) viewer.bandanaMesh.material.dispose();
           viewer.bandanaMesh = null;
         }
 
         const textureLoader = new THREE.TextureLoader();
-        textureLoader.setCrossOrigin('anonymous'); // Prevents WebGL freezes
+        textureLoader.setCrossOrigin('anonymous');
         
         textureLoader.load(
           assetUrl, 
           (texture) => {
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
+            texture.generateMipmaps = false;
+            texture.needsUpdate = true;
 
-            // Dimensions slightly larger than standard Minecraft head (8 x 8 x 8)
+            // Dimensions placed around standard Minecraft head box (8 x 8 x 8)
             const geometry = new THREE.BoxGeometry(8.6, 2.2, 8.6);
             const material = new THREE.MeshBasicMaterial({
               map: texture,
               transparent: true,
+              alphaTest: 0.1,
               side: THREE.DoubleSide
             });
 
             const bandanaMesh = new THREE.Mesh(geometry, material);
-            // Position exactly around the forehead area of the head mesh
-            bandanaMesh.position.set(0, 1.5, 0); 
+            // Positioned over forehead area relative to skinview3d head pivot
+            bandanaMesh.position.set(0, 4.5, 0); 
+            bandanaMesh.renderOrder = 1;
+            bandanaMesh.matrixAutoUpdate = true;
 
-            viewer.playerObject.skin.head.add(bandanaMesh);
+            // Attach directly to the player skin's head group
+            const headGroup = viewer.playerObject.skin.head;
+            headGroup.add(bandanaMesh);
+            
             viewer.bandanaMesh = bandanaMesh;
           },
           undefined,
-          (err) => {
-            console.error('Failed to load bandana texture:', err);
-          }
+          (err) => console.error('Bandana texture load failure:', err)
         );
       }
     }
@@ -471,10 +482,8 @@
             skin: skinUrl
           });
 
-          // Fallback to Steve if the username doesn't have a skin
           viewer.loadSkin(skinUrl).catch(() => viewer.loadSkin(DEFAULT_SKIN));
 
-          // Rotate model to show front face for bandanas
           viewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
           viewer.autoRotate = true;
           viewer.autoRotateSpeed = 1.2;
