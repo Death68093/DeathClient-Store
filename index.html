@@ -336,8 +336,7 @@
       });
     });
 
-    // Helper function to render Capes or 3D Bandanas
-    function loadCosmetic(viewer, item) {
+   function loadCosmetic(viewer, item) {
       if (!item || !item.type || !item.fileName) return;
 
       const assetUrl = `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
@@ -345,40 +344,49 @@
       if (item.type === 'cape') {
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
-        // Remove old bandana mesh if reloading
+        
+        // Clean up previous mesh to prevent memory leaks or matrix corruption
         if (viewer.bandanaMesh) {
-          viewer.playerObject.skin.head.remove(viewer.bandanaMesh);
+          if (viewer.bandanaMesh.parent) {
+            viewer.bandanaMesh.parent.remove(viewer.bandanaMesh);
+          }
+          viewer.bandanaMesh.material.dispose();
+          viewer.bandanaMesh.geometry.dispose();
           viewer.bandanaMesh = null;
         }
 
         const textureLoader = new THREE.TextureLoader();
-        textureLoader.setCrossOrigin('anonymous'); // Prevents WebGL freezes
+        textureLoader.setCrossOrigin('anonymous'); 
         
         textureLoader.load(
           assetUrl, 
           (texture) => {
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
+            texture.generateMipmaps = false;
 
-            // Dimensions slightly larger than standard Minecraft head (8 x 8 x 8)
             const geometry = new THREE.BoxGeometry(8.6, 2.2, 8.6);
             const material = new THREE.MeshBasicMaterial({
               map: texture,
               transparent: true,
+              alphaTest: 0.1,
               side: THREE.DoubleSide
             });
 
             const bandanaMesh = new THREE.Mesh(geometry, material);
-            // Position exactly around the forehead area of the head mesh
-            bandanaMesh.position.set(0, 1.5, 0); 
+            bandanaMesh.position.set(0, 2.0, 0); 
+            
+            // Ensure matrix updates correctly with the player model
+            bandanaMesh.matrixAutoUpdate = true;
 
-            viewer.playerObject.skin.head.add(bandanaMesh);
+            // Target inner head mesh safely inside skinview3d hierarchy
+            const headGroup = viewer.playerObject.skin.head;
+            headGroup.add(bandanaMesh);
+            
             viewer.bandanaMesh = bandanaMesh;
           },
           undefined,
-          (err) => {
-            console.error('Failed to load bandana texture:', err);
-          }
+          (err) => console.error('Bandana load failure:', err)
         );
       }
     }
