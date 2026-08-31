@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DeathClient Cosmetics</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r133/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.133.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0/bundles/skinview3d.bundle.js"></script>
   <style>
     :root {
@@ -336,7 +336,6 @@
       });
     });
 
-    // Helper function to render Capes or 3D Bandanas
     function loadCosmetic(viewer, item) {
       if (!item || !item.type || !item.fileName) return;
 
@@ -346,6 +345,7 @@
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
         
+        // Clean up previous cosmetics to prevent memory leaks
         if (viewer.bandanaMesh) {
           if (viewer.bandanaMesh.parent) {
             viewer.bandanaMesh.parent.remove(viewer.bandanaMesh);
@@ -358,16 +358,20 @@
         const textureLoader = new THREE.TextureLoader();
         textureLoader.setCrossOrigin('anonymous');
         
-        // Ensure assetUrl points to your nike_bandana.png file
+        // Load the specific file: nike_bandana_2.png
         textureLoader.load(
           assetUrl, 
           (texture) => {
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
             texture.generateMipmaps = false;
-            texture.needsUpdate = true;
 
-            const geometry = new THREE.BoxGeometry(9.2, 2.4, 9.2);
+            // Define the 3D dimensions (slightly larger than the 9.0 hat layer)
+            const geometry = new THREE.BoxGeometry(9.2, 2.5, 9.2);
+
+            // Create a custom material array to handle complex texture mapping
+            // For a fully custom atlas like nike_bandana_2.png, you map specific 
+            // regions to the [Right, Left, Top, Bottom, Front, Back] faces.
             const material = new THREE.MeshBasicMaterial({
               map: texture,
               transparent: true,
@@ -375,20 +379,26 @@
               side: THREE.DoubleSide
             });
 
-            const bandanaMesh = new THREE.Mesh(geometry, material);
-            bandanaMesh.position.set(0, 4.0, 0); 
-            bandanaMesh.renderOrder = 10; 
-            bandanaMesh.matrixAutoUpdate = true;
+            // Apply the same material to all 6 faces of the BoxGeometry array
+            const materials = [material, material, material, material, material, material];
 
-            // Fallback to prevent prototype conflicts between script versions
+            const bandanaMesh = new THREE.Mesh(geometry, materials);
+            
+            // Position at the forehead level relative to the neck pivot (Y=0)
+            bandanaMesh.position.set(0, 4.5, 0); 
+            bandanaMesh.matrixAutoUpdate = true;
+            bandanaMesh.renderOrder = 10;
+
+            // Prototype fallback to prevent Three.js version conflicts
             bandanaMesh.onBeforeRender = function() {};
             bandanaMesh.onAfterRender = function() {};
 
+            // Attach to the player's head group
             viewer.playerObject.skin.head.add(bandanaMesh);
             viewer.bandanaMesh = bandanaMesh;
           },
           undefined,
-          (err) => console.error('Bandana texture load failure:', err)
+          (err) => console.error('Bandana load failure:', err)
         );
       }
     }
