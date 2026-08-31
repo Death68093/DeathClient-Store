@@ -342,6 +342,7 @@ const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
         }
 
         const textureLoader = new THREE.TextureLoader();
+        textureLoader.setCrossOrigin('anonymous');
         textureLoader.load(assetUrl, (texture) => {
           texture.magFilter = THREE.NearestFilter;
           texture.minFilter = THREE.NearestFilter;
