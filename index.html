@@ -95,7 +95,6 @@
 
   <div class="grid" id="items-grid"></div>
 
-  <!-- Auth Modal -->
   <div id="auth-modal" class="modal">
     <div class="modal-content">
       <span class="close-btn" onclick="closeAuthModal()">&times;</span>
@@ -118,7 +117,6 @@
     </div>
   </div>
 
-  <!-- Try-On Modal -->
   <div id="tryon-modal" class="modal">
     <div class="modal-content" style="max-width: 420px;">
       <span class="close-btn" onclick="closeTryOnModal()">&times;</span>
@@ -235,19 +233,17 @@
       const assetUrl = `${STORE_API_URL}/api/assets/${item.type}/${item.fileName}`;
 
       if (item.type === 'cape') {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          viewer.loadCape(img.src).catch(err => console.error('Cape load error:', err));
-        };
-        img.onerror = () => {
-          console.warn(`Asset failed CORS check or missing: ${assetUrl}`);
-          if (viewer.playerObject && viewer.playerObject.cape) {
-            viewer.playerObject.cape.visible = false;
-          }
-        };
-        img.src = assetUrl;
-        
+        fetch(assetUrl)
+          .then(res => {
+            if (!res.ok) throw new Error(`Cape fetch failed: ${res.status}`);
+            return res.blob();
+          })
+          .then(blob => {
+            const objectUrl = URL.createObjectURL(blob);
+            viewer.loadCape(objectUrl);
+          })
+          .catch(err => console.error('Cape load error:', err));
+
       } else if (item.type === 'bandana') {
 
         if (viewer.bandanaMesh) {
@@ -273,17 +269,15 @@
           texture.magFilter = THREE.NearestFilter;
           texture.minFilter = THREE.NearestFilter;
 
-          // Head size is 8x8x8. 8.5x2.2x8.5 fits snug around the forehead
           const geometry = new THREE.BoxGeometry(8.5, 2.2, 8.5);
           const uvAttribute = geometry.attributes.uv;
 
-          // Map UVs so the logo/graphic renders centered on the front face
           const faceUvs = [
             [0.75, 0.0, 0.25, 1.0], // Right
             [0.0,  0.0, 0.25, 1.0], // Left
             [0.25, 0.0, 0.25, 0.2], // Top
             [0.25, 0.8, 0.25, 0.2], // Bottom
-            [0.25, 0.0, 0.25, 1.0], // Front (Nike Swoosh)
+            [0.25, 0.0, 0.25, 1.0], // Front
             [0.5,  0.0, 0.25, 1.0]  // Back
           ];
 
@@ -304,8 +298,6 @@
           });
 
           const bandanaMesh = new THREE.Mesh(geometry, material);
-          
-          // Y = 0.8 places the headband across the upper forehead just above the eyes
           bandanaMesh.position.set(0, 0.8, 0);
           bandanaMesh.renderOrder = 10;
 
@@ -459,8 +451,7 @@
         console.warn('OrbitControls optional load skipped:', e);
       }
 
-      currentViewer.autoRotate = true;
-      currentViewer.autoRotateSpeed = 0.8;
+      currentViewer.autoRotate = false;
     }
 
     function closeTryOnModal() {
