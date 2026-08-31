@@ -330,7 +330,7 @@ const DEFAULT_SKIN = "https://minotar.net/skin/Steve";
     function loadCosmetic(viewer, item) {
       if (!item || !item.type || !item.fileName) return;
 
-      const assetUrl = `${API_BASE_URL}/api/asset/${item.type}/${item.fileName}`;
+      const assetUrl = `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
 
       if (item.type === 'cape') {
         viewer.loadCape(assetUrl);
