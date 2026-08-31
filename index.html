@@ -178,7 +178,7 @@
     }
 
     async function handleAuthSubmit(e) {
-      e.preventDefault()
+      e.preventDefault();
       const username = document.getElementById('auth-username').value.trim();
       const password = document.getElementById('auth-password').value;
       const statusEl = document.getElementById('auth-status');
@@ -235,7 +235,19 @@
       const assetUrl = `${STORE_API_URL}/api/assets/${item.type}/${item.fileName}`;
 
       if (item.type === 'cape') {
-        viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          viewer.loadCape(img.src).catch(err => console.error('Cape load error:', err));
+        };
+        img.onerror = () => {
+          console.warn(`Asset failed CORS check or missing: ${assetUrl}`);
+          if (viewer.playerObject && viewer.playerObject.cape) {
+            viewer.playerObject.cape.visible = false;
+          }
+        };
+        img.src = assetUrl;
+        
       } else if (item.type === 'bandana') {
 
         if (viewer.bandanaMesh) {
