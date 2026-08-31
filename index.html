@@ -339,10 +339,10 @@
     function loadCosmetic(viewer, item) {
       if (!item || !item.type || !item.fileName) return;
 
-      // Use a direct relative path for the local file
       const assetUrl = item.type === 'bandana' 
-        ? "nike_bandana.png"
+        ? "/assets/bandana/nike_bandana.png" 
         : `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
+        
       if (item.type === 'cape') {
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
