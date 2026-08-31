@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
   <title>DeathClient Cosmetics</title>
   <script src="https://unpkg.com/three@0.133.0/build/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/skinview3d@3.0.0/bundles/skinview3d.bundle.js"></script>
@@ -340,54 +341,55 @@
       if (!item || !item.type || !item.fileName) return;
 
       const assetUrl = `${API_BASE_URL}/api/assets/${item.type}/${item.fileName}`;
-      
+
       if (item.type === 'cape') {
         viewer.loadCape(assetUrl).catch(err => console.error('Cape load error:', err));
       } else if (item.type === 'bandana') {
-        
+
         if (viewer.bandanaMesh) {
           if (viewer.bandanaMesh.parent) {
             viewer.bandanaMesh.parent.remove(viewer.bandanaMesh);
           }
           if (viewer.bandanaMesh.geometry) viewer.bandanaMesh.geometry.dispose();
-          if (viewer.bandanaMesh.material) viewer.bandanaMesh.material.dispose();
+          if (viewer.bandanaMesh.material) {
+            if (viewer.bandanaMesh.material.map) viewer.bandanaMesh.material.map.dispose();
+            viewer.bandanaMesh.material.dispose();
+          }
           viewer.bandanaMesh = null;
         }
 
         const textureLoader = new THREE.TextureLoader();
         textureLoader.setCrossOrigin('anonymous');
-        
+
         textureLoader.load(
-          assetUrl, 
+          assetUrl,
           (texture) => {
+            // Confirm texture is a valid object before assigning
+            if (!texture || typeof texture !== 'object') return;
+
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
             texture.generateMipmaps = false;
+            texture.needsUpdate = true;
 
             const geometry = new THREE.BoxGeometry(9.2, 2.5, 9.2);
-            
-            // Custom UV Mapping to unwrap nike_bandana_3.png correctly
-            // BoxGeometry faces: [Right, Left, Top, Bottom, Front, Back]
             const uvAttribute = geometry.attributes.uv;
-            
-            // Define fractional coordinates (x, y, width, height) based on your texture grid
-            // Adjust these specific fractions (0.0 to 1.0) to frame the exact parts of the PNG
+
             const faceUvs = [
-              [0.75, 0.5, 1.0, 1.0],   // Right
-              [0.0, 0.5, 0.25, 1.0],   // Left
-              [0.25, 1.0, 0.5, 1.0],   // Top (dummy or mapped)
-              [0.5, 1.0, 0.75, 1.0],   // Bottom (dummy or mapped)
-              [0.25, 0.5, 0.5, 1.0],   // Front (Nike logo)
-              [0.5, 0.5, 0.75, 1.0]    // Back
+              [0.75, 0.5, 0.25, 0.5], // Right
+              [0.0,  0.5, 0.25, 0.5], // Left
+              [0.25, 0.5, 0.25, 0.5], // Top
+              [0.5,  0.5, 0.25, 0.5], // Bottom
+              [0.25, 0.0, 0.25, 0.5], // Front
+              [0.5,  0.0, 0.25, 0.5]  // Back
             ];
 
             for (let i = 0; i < 6; i++) {
-              const uvs = faceUvs[i];
-              // Each face has 4 vertices (2 triangles), requiring 8 UV coordinates
-              uvAttribute.setXY(i * 4 + 0, uvs[0], uvs[1] + uvs[3]); // Top Left
-              uvAttribute.setXY(i * 4 + 1, uvs[0] + uvs[2], uvs[1] + uvs[3]); // Top Right
-              uvAttribute.setXY(i * 4 + 2, uvs[0], uvs[1]); // Bottom Left
-              uvAttribute.setXY(i * 4 + 3, uvs[0] + uvs[2], uvs[1]); // Bottom Right
+              const [u, v, w, h] = faceUvs[i];
+              uvAttribute.setXY(i * 4 + 0, u, v + h);
+              uvAttribute.setXY(i * 4 + 1, u + w, v + h);
+              uvAttribute.setXY(i * 4 + 2, u, v);
+              uvAttribute.setXY(i * 4 + 3, u + w, v);
             }
             uvAttribute.needsUpdate = true;
 
@@ -399,9 +401,9 @@
             });
 
             const bandanaMesh = new THREE.Mesh(geometry, material);
-            bandanaMesh.position.set(0, 4.5, 0); 
-            bandanaMesh.matrixAutoUpdate = true;
+            bandanaMesh.position.set(0, 4.5, 0);
             bandanaMesh.renderOrder = 10;
+            bandanaMesh.matrixAutoUpdate = true;
 
             bandanaMesh.onBeforeRender = function() {};
             bandanaMesh.onAfterRender = function() {};
@@ -410,7 +412,7 @@
             viewer.bandanaMesh = bandanaMesh;
           },
           undefined,
-          (err) => console.error('Bandana load failure:', err)
+          (err) => console.error('Bandana texture load failure:', err)
         );
       }
     }
