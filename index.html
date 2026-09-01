@@ -228,100 +228,57 @@
     }
 
     function attachBandana(viewer, imgElement) {
-      if (!viewer.playerObject || !viewer.playerObject.skin || !viewer.playerObject.skin.head) return;
+  if (!viewer.playerObject || !viewer.playerObject.skin || !viewer.playerObject.skin.head) return;
 
-      const headGroup = viewer.playerObject.skin.head;
+  const headGroup = viewer.playerObject.skin.head;
 
-      const existingMesh = headGroup.getObjectByName('bandanaCosmetic');
-      if (existingMesh) {
-        headGroup.remove(existingMesh);
-        if (existingMesh.geometry) existingMesh.geometry.dispose();
-        if (existingMesh.material) {
-          if (existingMesh.material.map) existingMesh.material.map.dispose();
-          existingMesh.material.dispose();
-        }
-      }
+  // Remove existing bandana if already attached
+  const existing = headGroup.getObjectByName('bandanaCosmetic');
+  if (existing) headGroup.remove(existing);
 
-      const canvas = document.createElement('canvas');
-      canvas.width = imgElement.width;
-      canvas.height = imgElement.height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(imgElement, 0, 0);
+  // Slightly larger than standard head (8x8) and outer layer (8.5x8.5) to prevent z-fighting
+  const geometry = new THREE.BoxGeometry(8.8, 2.2, 8.8);
+  const uvAttribute = geometry.attributes.uv;
 
-      const texture = new THREE.CanvasTexture(canvas);
-      texture.magFilter = THREE.NearestFilter;
-      texture.minFilter = THREE.NearestFilter;
-      texture.needsUpdate = true;
+  // UV mappings targeting the headband area on the texture sheet
+  // Format: [u_start, v_start, width, height]
+  const faceUvs = [
+    [0.25, 0.50, 0.25, 0.25], // Right
+    [0.75, 0.50, 0.25, 0.25], // Left
+    [0.00, 0.75, 0.25, 0.25], // Top
+    [0.25, 0.75, 0.25, 0.25], // Bottom
+    [0.00, 0.50, 0.25, 0.25], // Front (Nike Logo region)
+    [0.50, 0.50, 0.25, 0.25]  // Back
+  ];
 
-      const geometry = new THREE.BoxGeometry(8.6, 2.2, 8.6);
-      const uvAttribute = geometry.attributes.uv;
+  for (let i = 0; i < 6; i++) {
+    const [u, v, w, h] = faceUvs[i];
+    uvAttribute.setXY(i * 4 + 0, u, v + h);
+    uvAttribute.setXY(i * 4 + 1, u + w, v + h);
+    uvAttribute.setXY(i * 4 + 2, u, v);
+    uvAttribute.setXY(i * 4 + 3, u + w, v);
+  }
+  uvAttribute.needsUpdate = true;
 
-      const faceUvs = [
-        [0.75, 0.0, 0.25, 1.0], // Right
-        [0.0,  0.0, 0.25, 1.0], // Left
-        [0.25, 0.0, 0.25, 0.2], // Top
-        [0.25, 0.8, 0.25, 0.2], // Bottom
-        [0.25, 0.0, 0.25, 1.0], // Front
-        [0.5,  0.0, 0.25, 1.0]  // Back
-      ];
+  const texture = new THREE.CanvasTexture(imgElement);
+  texture.magFilter = THREE.NearestFilter;
+  texture.minFilter = THREE.NearestFilter;
 
-      for (let i = 0; i < 6; i++) {
-        const [u, v, w, h] = faceUvs[i];
-        uvAttribute.setXY(i * 4 + 0, u, v + h);
-        uvAttribute.setXY(i * 4 + 1, u + w, v + h);
-        uvAttribute.setXY(i * 4 + 2, u, v);
-        uvAttribute.setXY(i * 4 + 3, u + w, v);
-      }
-      uvAttribute.needsUpdate = true;
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    alphaTest: 0.1,
+    side: THREE.DoubleSide
+  });
 
-      const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        alphaTest: 0.1,
-        side: THREE.DoubleSide,
-        depthTest: true,
-        depthWrite: true
-      });
+  const bandanaMesh = new THREE.Mesh(geometry, material);
+  bandanaMesh.name = 'bandanaCosmetic';
+  
+  // Position vertically over forehead area relative to head origin
+  bandanaMesh.position.set(0, 1.2, 0);
 
-      const bandanaMesh = new THREE.Mesh(geometry, material);
-      bandanaMesh.name = 'bandanaCosmetic';
-      bandanaMesh.position.set(0, 0.8, 0);
-      
-      headGroup.add(bandanaMesh);
-    }
-
-    function loadCosmetic(viewer, item) {
-      if (!item || !item.type || !item.fileName) return;
-
-      const assetUrl = `${STORE_API_URL}/api/assets/${item.type}/${item.fileName}`;
-
-      if (item.type === 'cape') {
-        fetch(assetUrl)
-          .then(res => {
-            if (!res.ok) throw new Error(`Cape fetch failed: ${res.status}`);
-            return res.blob();
-          })
-          .then(blob => {
-            const objectUrl = URL.createObjectURL(blob);
-            viewer.loadCape(objectUrl);
-          })
-          .catch(err => console.error('Cape load error:', err));
-
-      } else if (item.type === 'bandana') {
-        fetch(assetUrl)
-          .then(res => {
-            if (!res.ok) throw new Error(`Bandana fetch failed: ${res.status}`);
-            return res.blob();
-          })
-          .then(blob => {
-            const img = new Image();
-            img.onload = () => attachBandana(viewer, img);
-            img.src = URL.createObjectURL(blob);
-          })
-          .catch(err => console.error('Bandana load error:', err));
-      }
-    }
-
+  headGroup.add(bandanaMesh);
+}
     async function fetchItems() {
       try {
         const res = await fetch(`${STORE_API_URL}/api/items`);
