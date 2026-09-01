@@ -227,6 +227,69 @@
       renderGrid();
     }
 
+    function attachBandana(viewer, imgElement) {
+      if (!viewer.playerObject || !viewer.playerObject.skin || !viewer.playerObject.skin.head) return;
+
+      const headGroup = viewer.playerObject.skin.head;
+
+      const existingMesh = headGroup.getObjectByName('bandanaCosmetic');
+      if (existingMesh) {
+        headGroup.remove(existingMesh);
+        if (existingMesh.geometry) existingMesh.geometry.dispose();
+        if (existingMesh.material) {
+          if (existingMesh.material.map) existingMesh.material.map.dispose();
+          existingMesh.material.dispose();
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = imgElement.width;
+      canvas.height = imgElement.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(imgElement, 0, 0);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.magFilter = THREE.NearestFilter;
+      texture.minFilter = THREE.NearestFilter;
+      texture.needsUpdate = true;
+
+      const geometry = new THREE.BoxGeometry(8.6, 2.2, 8.6);
+      const uvAttribute = geometry.attributes.uv;
+
+      const faceUvs = [
+        [0.75, 0.0, 0.25, 1.0], // Right
+        [0.0,  0.0, 0.25, 1.0], // Left
+        [0.25, 0.0, 0.25, 0.2], // Top
+        [0.25, 0.8, 0.25, 0.2], // Bottom
+        [0.25, 0.0, 0.25, 1.0], // Front
+        [0.5,  0.0, 0.25, 1.0]  // Back
+      ];
+
+      for (let i = 0; i < 6; i++) {
+        const [u, v, w, h] = faceUvs[i];
+        uvAttribute.setXY(i * 4 + 0, u, v + h);
+        uvAttribute.setXY(i * 4 + 1, u + w, v + h);
+        uvAttribute.setXY(i * 4 + 2, u, v);
+        uvAttribute.setXY(i * 4 + 3, u + w, v);
+      }
+      uvAttribute.needsUpdate = true;
+
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        alphaTest: 0.1,
+        side: THREE.DoubleSide,
+        depthTest: true,
+        depthWrite: true
+      });
+
+      const bandanaMesh = new THREE.Mesh(geometry, material);
+      bandanaMesh.name = 'bandanaCosmetic';
+      bandanaMesh.position.set(0, 0.8, 0);
+      
+      headGroup.add(bandanaMesh);
+    }
+
     function loadCosmetic(viewer, item) {
       if (!item || !item.type || !item.fileName) return;
 
@@ -245,70 +308,17 @@
           .catch(err => console.error('Cape load error:', err));
 
       } else if (item.type === 'bandana') {
-
-        if (viewer.bandanaMesh) {
-          if (viewer.bandanaMesh.parent) viewer.bandanaMesh.parent.remove(viewer.bandanaMesh);
-          if (viewer.bandanaMesh.geometry) viewer.bandanaMesh.geometry.dispose();
-          if (viewer.bandanaMesh.material) {
-            if (viewer.bandanaMesh.material.map) viewer.bandanaMesh.material.map.dispose();
-            viewer.bandanaMesh.material.dispose();
-          }
-          viewer.bandanaMesh = null;
-        }
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-
-          const texture = new THREE.CanvasTexture(canvas);
-          texture.magFilter = THREE.NearestFilter;
-          texture.minFilter = THREE.NearestFilter;
-
-          const geometry = new THREE.BoxGeometry(8.5, 2.2, 8.5);
-          const uvAttribute = geometry.attributes.uv;
-
-          const faceUvs = [
-            [0.75, 0.0, 0.25, 1.0], // Right
-            [0.0,  0.0, 0.25, 1.0], // Left
-            [0.25, 0.0, 0.25, 0.2], // Top
-            [0.25, 0.8, 0.25, 0.2], // Bottom
-            [0.25, 0.0, 0.25, 1.0], // Front
-            [0.5,  0.0, 0.25, 1.0]  // Back
-          ];
-
-          for (let i = 0; i < 6; i++) {
-            const [u, v, w, h] = faceUvs[i];
-            uvAttribute.setXY(i * 4 + 0, u, v + h);
-            uvAttribute.setXY(i * 4 + 1, u + w, v + h);
-            uvAttribute.setXY(i * 4 + 2, u, v);
-            uvAttribute.setXY(i * 4 + 3, u + w, v);
-          }
-          uvAttribute.needsUpdate = true;
-
-          const material = new THREE.MeshBasicMaterial({
-            map: texture,
-            transparent: true,
-            alphaTest: 0.1,
-            side: THREE.DoubleSide
-          });
-
-          const bandanaMesh = new THREE.Mesh(geometry, material);
-          bandanaMesh.position.set(0, 0.8, 0);
-          bandanaMesh.renderOrder = 10;
-
-          if (viewer.playerObject && viewer.playerObject.skin && viewer.playerObject.skin.head) {
-            viewer.playerObject.skin.head.add(bandanaMesh);
-            viewer.bandanaMesh = bandanaMesh;
-          }
-        };
-
-        img.onerror = (err) => console.error('Bandana asset failed to load from:', assetUrl);
-        img.src = assetUrl;
+        fetch(assetUrl)
+          .then(res => {
+            if (!res.ok) throw new Error(`Bandana fetch failed: ${res.status}`);
+            return res.blob();
+          })
+          .then(blob => {
+            const img = new Image();
+            img.onload = () => attachBandana(viewer, img);
+            img.src = URL.createObjectURL(blob);
+          })
+          .catch(err => console.error('Bandana load error:', err));
       }
     }
 
@@ -390,16 +400,19 @@
           const viewer = new skinview3d.SkinViewer({
             canvas: canvas,
             width: 260,
-            height: 220,
-            skin: skinUrl
+            height: 220
           });
 
-          viewer.loadSkin(skinUrl).catch(() => viewer.loadSkin(DEFAULT_SKIN));
-          viewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
-          viewer.autoRotate = true;
-          viewer.autoRotateSpeed = 1.2;
+          // Load skin and then attach cosmetic to ensure bone graph is fully ready
+          viewer.loadSkin(skinUrl)
+            .catch(() => viewer.loadSkin(DEFAULT_SKIN))
+            .finally(() => {
+              viewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
+              viewer.autoRotate = true;
+              viewer.autoRotateSpeed = 1.2;
+              loadCosmetic(viewer, item);
+            });
 
-          loadCosmetic(viewer, item);
           cardViewers.push(viewer);
         }
       });
@@ -410,6 +423,7 @@
       if (!item) return;
 
       const targetUsername = currentUser ? currentUser.username : 'Steve';
+      const skinUrl = `https://minotar.net/skin/${targetUsername}`;
 
       document.getElementById('tryon-title').textContent = `Try-On: ${item.name}`;
       document.getElementById('modal-buy-btn').onclick = () => {
@@ -435,12 +449,17 @@
       currentViewer = new skinview3d.SkinViewer({
         canvas: canvas,
         width: 300,
-        height: 320,
-        skin: `https://minotar.net/skin/${targetUsername}`
+        height: 320
       });
 
-      loadCosmetic(currentViewer, item);
-      currentViewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
+      // Same sequence logic as renderGrid to ensure cosmetic geometry attaches cleanly
+      currentViewer.loadSkin(skinUrl)
+        .catch(() => currentViewer.loadSkin(DEFAULT_SKIN))
+        .finally(() => {
+          loadCosmetic(currentViewer, item);
+          currentViewer.playerObject.rotation.y = item.type === 'bandana' ? 0 : Math.PI;
+          currentViewer.autoRotate = false;
+        });
 
       try {
         if (typeof skinview3d.createOrbitControls === 'function') {
@@ -450,8 +469,6 @@
       } catch (e) {
         console.warn('OrbitControls optional load skipped:', e);
       }
-
-      currentViewer.autoRotate = false;
     }
 
     function closeTryOnModal() {
